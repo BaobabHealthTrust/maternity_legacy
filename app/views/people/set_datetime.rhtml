@@ -1,0 +1,20 @@
+<script>
+  var tt_cancel_destination = "/people"
+</script>
+
+<%#= stylesheet_link_tag "patient_set_datetime_for_retrospective_data_entry" %>
+<% form_tag :action => "set_datetime" do %>
+  <% default={
+    :allowFreeText => 'true',
+  } %>
+
+  <% options = default.merge({
+      :id => "retrospective_date",
+      :helptext => "Set Date",
+      :field_type => "date"
+    }) %>
+
+  <%= text_field_tag("retrospective_date",DateTime.now().strftime("%Y-%m-%d"),options) %>
+
+  <%= submit_tag "Set visit date" %>
+<% end %>

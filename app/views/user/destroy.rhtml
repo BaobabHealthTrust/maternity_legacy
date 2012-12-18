@@ -1,0 +1,8 @@
+<script type="text/javascript">
+  tt_cancel_destination = "/user/show?user_id=<%= @user.id %>"; 
+</script>
+
+<% form_tag :action => 'destroy', :user_id => @user do %>
+  <%= render :partial => 'form' %>
+  <%#= submit_tag 'Destroy' %>
+<% end %>

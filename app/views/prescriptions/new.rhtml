@@ -1,0 +1,33 @@
+<script type="text/javascript">
+  var tt_cancel_destination = "/prescriptions/?patient_id=<%= @patient.id %>"
+
+  var selected_drugs = {};
+  var durations = {};
+  var doses = {};
+  var freqs = {};
+
+</script>
+<script language="javascript" type="text/javascript" src="/javascripts/drugs.js"></script>
+<script language="javascript" type="text/javascript" src="/javascripts/drugsdata.js"></script>
+<style type="text/css">
+  #space { display:inline; font-size:1.2em; }
+  #helpText0 { width:680px}
+</style>
+<%= stylesheet_link_tag "drug-style" %>
+<form id='prescription' action="/prescriptions/create" method='post'>
+
+  <input
+    type='text' name='drugs' tt_onLoad='generateDrugs()'
+    tt_onUnLoad='removeDrugs()' tt_pageStyleClass='NoControls'
+    optional />
+
+  <!--input type="hidden" name="diagnosis" value="DIABETES MEDICATION" /-->
+
+  <!--input type="hidden" name="suggestion" value="0" /-->
+
+  <input type="hidden" value="<%= @patient.id %>" id="patient_id" name="patient_id" />
+
+
+  <%= submit_tag "Finish" %>
+
+</form>

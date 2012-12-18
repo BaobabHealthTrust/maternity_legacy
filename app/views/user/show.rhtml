@@ -1,0 +1,48 @@
+<script type="text/javascript">
+  tt_cancel_destination = "/people";
+</script>
+<style type="text/css">
+
+      #menu {
+        float:right;
+        overflow:auto;
+        position:relative;
+        height:478px;
+        width:257px;
+        margin-top: 20px;
+      }
+      
+      button {
+        min-width: 200px;
+        float: right;
+      }
+</style>
+
+<div style="margin:10px;">
+  <div id="details" style="float:left; width: 720px; ">
+    <%= render :partial => "details" %>
+  </div>
+  <div id="menu">
+    <button onclick="window.location = '/user/change_password?user_id=<%= @user.id -%>'">
+      <span>Change Password</span>
+    </button>
+    <button onclick="window.location = '/user/add_role?user_id=<%= @user.id -%>'">
+      <span>Add Role</span>
+    </button>
+    <button onclick="window.location = '/user/delete_role?user_id=<%= @user.id -%>'">
+      <span>Remove Role</span>
+    </button>
+    <button onclick="window.location = '/user/destroy?user_id=<%= @user.id -%>'">
+      <span>Remove User</span>
+    </button>
+  </div>
+</div>
+
+<div style="z-index:11;bottom:0px; height: 80px; width: 1000px; position: absolute; background-color: #333;">
+  <button id="nextButton" style="margin-top: 10px; margin-right: 10px;" class="navButton green"
+          onclick="if (tt_cancel_destination) window.location = tt_cancel_destination;">
+    <span>
+      Finish
+    </span>
+  </button>
+</div>

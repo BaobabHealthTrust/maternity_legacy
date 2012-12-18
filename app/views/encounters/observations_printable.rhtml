@@ -1,0 +1,436 @@
+<html>
+  <head>
+    <title></title>
+    <style media="print">
+      td {
+        font-size: 18px;
+      }
+    </style>
+    <style media="screen">
+      td {
+        border-top: 0.01px solid #000;
+        vertical-align: top;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <table width="100%" cellpadding="5" style="/*border: 1px solid #eee;*/ margin-top: 10px;" cellspacing="0">
+      <tr>
+        <th colspan="5" style="font-size: 24px; padding: 10px; border-bottom: 1px solid #000; border-top: 1px solid #000;">
+          <%= @facility %> - <%= (params[:ret] ? ( params[:ret] == "postnatal" ? "Born Before Arrival" : 
+                "Midwife") : "Midwife") %> Admission Note
+        </th>
+      </tr>
+      <!--tr>
+        <td colspan="2">
+      <!--table width="100%" cellspacing="0" cellpadding="5"-->
+      <tr>
+        <td>
+          <b>Patient Identifier:</b>
+        </td>
+        <td>
+          <%= @patient.national_id_with_dashes %>
+        </td>
+        <td colspan="3" align="right" rowspan="4">
+          <img src="/images/patient_id.png" alt="National Id" />
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b>Name:</b>
+        </td>
+        <td>
+          <%= @patient.person.name %>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b>Age:</b>
+        </td>
+        <td>
+          <%= @patient.person.age %>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b>NOK:</b>
+        </td>
+        <td>
+          <%= @nok %>&nbsp;
+        </td>
+      </tr>
+      <!--/table-->
+      <!--/td-->
+    </tr>
+    <tr>
+      <td>
+        <b>Religion:</b>
+      </td>
+      <td>
+        <%= @religion %>&nbsp;
+      </td>
+      <td colspan="3">
+        <b>Education Level:</b>&nbsp;<%= @education %>&nbsp;
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <b>Gravida:</b> <%= (@encounters["PATIENT PREGNANT"].to_i < @gravida ?
+              @gravida : @encounters["PATIENT PREGNANT"].to_i) rescue "" %>
+      </td>
+      <td>
+        <b>Parity:</b>  <%= (@encounters["PARITY"].to_i < @deliveries ? @deliveries :
+            @encounters["PARITY"].to_i ) rescue "" %>
+      </td>
+      <td colspan="3">
+
+        <% i = 0
+        # raise @encounters.to_yaml
+        @encounters["DELIVERY MODE"].each{|e|
+          i = i + 1
+
+          indice = ""
+          case i
+          when 1
+            indice = "<sup>st</sup>"
+          when 2
+            indice = "<sup>nd</sup>"
+          when 3
+            indice = "<sup>rd</sup>"
+          else
+            indice = "<sup>th</sup>"
+          end
+        %>
+
+          <%= "<b>#{i}#{indice}:</b>&nbsp;#{(e.upcase == "SPONTANEOUS VAGINAL DELIVERY" ? "SVD" :
+          (e.upcase == "CAESAREAN SECTION" ? "CS" : (e.upcase == "VACUUM EXTRACTION DELIVERY" ? "VE" : "")))} &nbsp;&nbsp;&nbsp;" %>
+
+        <%
+        } rescue "&nbsp;"
+      %>&nbsp;
+      </td>
+    </tr>
+    <tr>
+      <td>
+        &nbsp;
+      </td>
+      <td colspan="4">
+        <b>Abortions:</b> <%= (@encounters["NUMBER OF ABORTIONS"].to_i < @abortions ? @abortions :
+              @encounters["NUMBER OF ABORTIONS"].to_i) rescue "" %>
+      </td>
+    </tr>
+    <tr>
+      <% if params[:ret] && params[:ret] != "postnatal" %>
+
+        <td>
+          <b>LMP:</b> <%= @encounters["DATE OF LAST MENSTRUAL PERIOD"] %>
+        </td>
+        <td>
+          <b>EDD:</b> <%= (@encounters["DATE OF LAST MENSTRUAL PERIOD"].to_date + 7.days + 9.months).strftime("%d/%b/%Y") rescue "" %>
+        </td>
+
+      <% end %>
+
+      <td colspan="<%= (params[:ret] && params[:ret] != "postnatal" ? 3 : 5) %>">
+        <b>PMTCT:</b> <%= (!@encounters["HIV STATUS"].nil? ? 
+            (@encounters["HIV STATUS"].upcase == "REACTIVE" ? "R" : (@encounters["HIV STATUS"].upcase == 
+                "UNKNOWN" ? "Unknown" : "NR")) : "") %>&nbsp;&nbsp;&nbsp;
+        <% if !@encounters["HIV STATUS"].nil? && @encounters["HIV STATUS"].upcase == "REACTIVE" %>
+
+          <b>ARVs:</b> <%= @encounters["ON ANTIRETROVIRAL THERAPY"].titleize rescue "" %>&nbsp;&nbsp;&nbsp;
+
+          <b>Period:</b> <%= @encounters["PERIOD ON ARVS"] %>&nbsp;&nbsp;&nbsp;
+
+        <% end %>
+      </td>
+    </tr>
+    <!--tr>
+      <td style="border-top: 0px solid #000;">
+        <b>Ward:</b> <%= @encounters["WARD"] %>
+      </td>
+      <td style="border-top: 0px solid #000;" colspan="2">
+        <b>Room Number:</b> <%= @encounters["ROOM NUMBER"] %>
+      </td>
+      <td style="border-top: 0px solid #000;" colspan="2">
+        <b>Bed Number:</b> <%= @encounters["BED NUMBER"] %>
+      </td>
+    </tr-->
+    <tr>
+      <td>
+        <% if params[:ret] && params[:ret] != "postnatal" %>
+          <b>Feeding<br />Option:</b> <%= @encounters["INFANT FEEDING METHOD"] %>
+        <% else %>
+          &nbsp;
+        <% end %>
+      </td>
+
+      <td>
+        <b>Referred:</b> <%=  @referral["IS PATIENT REFERRED?"].to_s rescue ""%>&nbsp;&nbsp;&nbsp;
+      </td>
+      <td>
+        <% if @referral["IS PATIENT REFERRED?"].to_s == "Yes" %>
+
+          <b>From:</b> <div><%= @referral["REFERRAL CLINIC IF REFERRED"] rescue "" %></div>
+
+        <% else %>
+          &nbsp;
+        <% end %>
+      </td>
+      <td colspan="2">
+        <% if @referral["IS PATIENT REFERRED?"].to_s == "Yes" %>
+
+          <b>Reason:</b> <%= @referral["REASON FOR REFERRAL TO ANOTHER SITE"] rescue "" %>
+
+        <% else %>
+          &nbsp;
+        <% end %>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <b>Date of Admission:</b> <%= @encounters["ADMISSION DATE"] %>
+      </td>
+      <td>
+        <b>Time:</b> <%= @encounters["ADMISSION TIME"] %>
+      </td>
+      <td colspan="3">
+        <b>Observation:</b> <%= @encounters["CLINICIAN NOTES"] %>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <b>Condition:</b> <%= @encounters["CONDITION"] %>
+      </td>
+      <td>
+        <b>Anaemia:</b> <%= @encounters["ANEMIA"].titleize rescue "" %>
+      </td>
+      <td colspan="3">
+        <b>Oedema:</b> <%= @encounters["EDEMA NOS"].titleize rescue "" %>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="5">
+        <b>Admitted Due To:</b> <%= (@outpatient_diagnosis["DIAGNOSIS"].join(", ")rescue "") %>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <i style="font-size: 1.3em; text-decoration: underline;">Vital Signs</i>
+      </td>
+      <td>
+        <b>BP:</b>
+        <%= (@encounters["SYSTOLIC BLOOD PRESSURE"] ? @encounters["SYSTOLIC BLOOD PRESSURE"] : "?")
+      %>/<%= (@encounters["DIASTOLIC BLOOD PRESSURE"] ? @encounters["DIASTOLIC BLOOD PRESSURE"] : "?") %>
+      </td>
+      <td>
+        <b>Pulse:</b> <%= @encounters["PULSE"] %>
+      </td>
+      <td>
+        <b>Resp:</b> <%= @encounters["RESPIRATORY RATE"] %>
+      </td>
+      <td>
+        <b>Temp:</b> <%= @encounters["TEMPERATURE (C)"] %>
+      </td>
+    </tr>
+
+    <% if params[:ret] && params[:ret] != "postnatal" %>
+
+      <tr>
+        <td>
+          <b>Fundus:</b> <%= @encounters["FUNDUS"] %> weeks
+        </td>
+        <td>
+          <b>Lie:</b> <%= @encounters["LIE"].titleize rescue "" %>
+        </td>
+        <td colspan="3">
+          <b>Presentation:</b> <%= @encounters["PRESENTATION"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b>Position:</b> <%= @position.titleize rescue "" %>
+        </td>
+        <td>
+          <b>Contractions:</b> <%= (@encounters["CONTRACTIONS"].titleize == "Yes" ? 
+              @encounters["CONTRACTIONS INTENSITY"].titleize + "/" + @encounters["CONTRACTIONS LEVEL"].titleize : 
+              @encounters["CONTRACTIONS"].titleize) rescue "" %>
+        </td>
+        <td>
+          <b>FHR:</b> <%= @encounters["FETAL HEART RATE"].titleize rescue "" %>
+        </td>
+        <td colspan="2">
+          <b>Descent:</b> <%= @encounters["DESCENT"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="5">
+          <b>Genetalia Inspection:</b> <%= @encounters["GENETALIA INSPECTION"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <i style="font-size: 1.3em; text-decoration: underline;">Vaginal Examination</i>
+        </td>
+        <td>
+          <b>Station:</b> <%= @encounters["STATION"] rescue "" %>
+        </td>
+        <td>
+          <b>Cervical Dilation:</b> <%= @encounters["CERVICAL DILATION"].titleize rescue "" %>
+        </td>
+        <td colspan="2">
+          <% if !@encounters["MOULDING"].blank? %>
+            <b>Caput/Moulding:</b> <%= @encounters["MOULDING"].titleize rescue "" %>
+          <% else %>
+            <b>Caput/Moulding:</b> <%= @encounters["CAPUT"].titleize rescue "" %>
+          <% end %>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <b>Membranes:</b> <%= @encounters["MEMBRANES"].titleize rescue "" %>
+        </td>
+        <td>
+          <b>On:</b> <%= @encounters["RUPTURE DATE"].titleize rescue "" %>
+        </td>
+        <td colspan="2">
+          <b>At:</b> <%= @encounters["RUPTURE TIME"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2">
+          <b>Colour of liqour:</b> <%= @encounters["COLOUR OF LIQOUR"].titleize rescue "" %>
+        </td>
+        <td colspan="3">
+          <b>Presenting part:</b> <%= @encounters["PRESENTING PART"].titleize rescue "" %>
+        </td>
+      </tr>
+
+    <% else %>
+
+      <tr>
+        <td>
+          <i style="font-size: 1.3em; text-decoration: underline;">Vaginal Examination</i>
+        </td>
+        <td>
+          <b>Blood Loss:</b> <%= @encounters["BLOOD LOSS"].titleize rescue "" %>
+        </td>
+        <td>
+          <b>Tear:</b> <%= @encounters["TEAR"].titleize rescue "" %>
+        </td>
+        <td colspan="2">
+          <b>Third Stage:</b> <%= @encounters["THIRD STAGE"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td><%# raise @encounters.to_yaml %>
+          <i style="font-size: 1.3em; text-decoration: underline;">Abdominal Examination</i>
+        </td>
+        <td colspan="2">
+          <b>Uterus:</b> <%= @encounters["STATUS OF UTERUS"].titleize rescue "" %>
+        </td>
+        <td colspan="2">
+          <b>Status of Placenta:</b> <%= @encounters["STATUS OF PLACENTA"].titleize rescue "" %>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="5">
+          <i style="font-size: 1.3em; text-decoration: underline;">Physical Examination 
+            <%= (@bbaencounters["NUMBER OF BABIES"].to_i == 1 ? "Baby" : "Babies") %></i>
+        </td>
+      </tr>
+      <% 
+      prefixes = {
+        1 => (@bbaencounters["NUMBER OF BABIES"].to_i > 1 ? "1<sup>st</sup>" : ""),
+        2 => "2<sup>nd</sup> ",
+        3 => "3<sup>rd</sup> "
+      }
+      # raise @babyencounters.to_yaml
+      found = 0
+    %>
+      <% (1..(@bbaencounters["NUMBER OF BABIES"].to_i)).each do |baby| %>
+        <% if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") == "DEAD" 
+          found = found + 1
+        end
+      %>
+        <tr>
+          <td>
+            <b style="font-size: 1.2em;"><%= prefixes[baby] %> Baby:&emsp;</b>
+          </td>
+          <td>
+            <b>Respiratory rate:</b> <%= (@babyencounters["RESPIRATORY RATE"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+          <td>
+            <b>Weight:</b> <%= (@babyencounters["WEIGHT (KG)"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+          <td>
+            <b>Temp.:</b> <%= (@babyencounters["TEMPERATURE (C)"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+          <td>
+            <b>Heart rate:</b> <%= (@babyencounters["PULSE"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <b>Condition at admission:</b> <%= @babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].titleize rescue "" %>
+          </td>
+          <td>
+            <b>Cord:</b> 
+          </td>
+          <td>
+            <b>Tied:</b> <%= (@babyencounters["CORD TIED"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+          <td>
+            <b>Clean:</b> <%= (@babyencounters["CORD CLEAN"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2">
+            <b>Abdomen:</b> <%= (@babyencounters["ABDOMEN"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>
+          <td colspan="3">
+            <b>Abnormalities:</b> <%= (@babyencounters["SPECIFY"][baby - 1 - 
+              found].titleize rescue "") if (@babyencounters["CONDITION OF BABY AT ADMISSION"][baby - 1].upcase rescue "") != "DEAD" %>
+          </td>          
+        </tr>
+
+      <% end %>
+
+    <% end %>
+
+    <tr>
+      <td colspan="5">
+        <b>Impression:</b> <%= @encounters["CLINICAL IMPRESSION COMMENTS"].titleize.gsub(/\n/, '<br/>') rescue "" %>
+        <% (((@encounters["CLINICAL IMPRESSION COMMENTS"].titleize.gsub(/\n/, '<br/>') rescue "").length)..110).each{|p| %>
+          <%="....."%>
+        <% } %>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="5">
+        <b>Plan:</b> <%= @encounters["PLAN"].titleize.gsub(/\n/, '<br/>') rescue "" %>
+        <% (((@encounters["PLAN"].titleize.gsub(/\n/, '<br/>') rescue "").length)..((params[:ret] ? 
+                (params[:ret] == "postnatal" ? 140 : 200) : 200))).each{|p| %>
+          <%="....."%>
+        <% } %>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="3" style="padding-top: 30px; border-bottom: 1px solid #000; height: 60px;">
+        <b>Name of admitting officer:</b> <%= User.find(session[:user_id] || @user).name.titleize rescue "......................................." %>
+      </td>
+      <td colspan="2" style="padding-top: 30px; border-bottom: 1px solid #000;" align="right">
+        <b>Signature:</b> ...................................................
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
