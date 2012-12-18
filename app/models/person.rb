@@ -8,6 +8,7 @@ class Person < ActiveRecord::Base
   attr_accessor :education_level, :religion
 
   has_one :patient, :foreign_key => :patient_id, :dependent => :destroy
+  has_one :birth_report, :foreign_key => :person_id, :dependent => :destroy
   has_many :names, :class_name => 'PersonName', :foreign_key => :person_id, :dependent => :destroy, :conditions => 'person_name.voided = 0', :order => 'person_name.preferred DESC'
   has_many :addresses, :class_name => 'PersonAddress', :foreign_key => :person_id, :dependent => :destroy, :conditions => 'person_address.voided = 0', :order => 'person_address.preferred DESC'
   has_many :person_attributes, :foreign_key => :person_id, :dependent => :destroy #, :conditions => 'person.voided = 0'
@@ -179,7 +180,22 @@ class Person < ActiveRecord::Base
     #      return filtered_by_family_name unless filtered_by_family_name.empty?
     #      return filtered_by_gender unless filtered_by_gender.empty?
     #      return people
-    #    else
+    #    elseservers = CoreService.get_global_property_value("remote_servers.parent")
+
+      server_address_and_port = servers.to_s.split(':')
+
+      server_address = server_address_and_port.first
+      server_port = server_address_and_port.second
+
+      login = CoreService.get_global_property_value("remote_bart.username").split(/,/) rescue ""
+      password = CoreService.get_global_property_value("remote_bart.password").split(/,/) rescue ""
+      location = CoreService.get_global_property_value("remote_bart.location").split(/,/) rescue nil
+      machine = CoreService.get_global_property_value("remote_machine.account_name").split(/,/) rescue ''
+
+      uri = "http://#{server_address}:#{server_port}/people/remote_demographics"
+
+      p = JSON.parse(RestClient.post(uri, known_demographics)).first # rescue nil
+
     #    return people if people.size == 1
     #    people = Person.find(:all, :include => [{:names => [:person_name_code]}, :patient], :conditions => [
     #    "gender = ? AND \
@@ -216,15 +232,17 @@ class Person < ActiveRecord::Base
 
   end
 
-  def self.create_from_form(params)
+  def self.create_from_form_old(params)
+    
     #return rescue text if remote timed out or creation of patient on remote failed
     if params.to_s == 'timeout' || params.to_s == 'creationfailed'
       return params.to_s
     end
-
+    
     if params.has_key?('person')
       params = params['person']
     end
+
     address_params = params["addresses"]
     names_params = params["names"]
     patient_params = params["patient"]
@@ -232,7 +250,8 @@ class Person < ActiveRecord::Base
 
     params_to_process = params.reject{|key,value| key.match(/addresses|patient|names|attributes/) }
     birthday_params = params_to_process.reject{|key,value| key.match(/gender/) }
-    person_params = params_to_process.reject{|key,value| key.match(/birth_|age_estimate/) }
+    person_params = params_to_process.reject{|key,value|
+      key.match(/birth_|age_estimate|race|occupation|citizenship|home_phone_number|cell_phone_number/) }
 
     # raise person_params.to_yaml
 
@@ -240,8 +259,7 @@ class Person < ActiveRecord::Base
       person = Person.create(person_params[:person])
     else
       person = Person.create(person_params)
-    end
-    
+    end   
     
     if birthday_params["birth_year"] == "Unknown"
       person.set_birthdate_by_age(birthday_params["age_estimate"])
@@ -282,6 +300,113 @@ class Person < ActiveRecord::Base
     return person
   end
 
+  def self.create_from_form(params)
+    #return rescue text if remote timed out or creation of patient on remote failed
+    if params.to_s == 'timeout' || params.to_s == 'creationfailed'
+      return params.to_s
+    end
+
+     params = params['person']? params['person'] : params
+	    
+    	address_params = params["addresses"]
+		names_params = params["names"]
+		patient_params = params["patient"]
+		
+		params_to_process = params.reject{|key,value| key.match(/addresses|patient|names|relation|cell_phone_number|home_phone_number|office_phone_number|agrees_to_be_visited_for_TB_therapy|agrees_phone_text_for_TB_therapy/) }
+		
+		birthday_params = params_to_process.reject{|key,value| key.match(/gender/) }
+		person_params = params_to_process.reject{|key,value| key.match(/birth_|age_estimate|occupation|identifiers|citizenship|race/) }
+
+		if person_params["gender"].to_s == "Female"
+        	person_params["gender"] = 'F'
+		elsif person_params["gender"].to_s == "Male"
+        	person_params["gender"] = 'M'
+		end
+
+     	person_params["attributes"].delete("occupation") if person_params["attributes"]
+     	person_params["attributes"].delete("cell_phone_number") if person_params["attributes"]
+
+      	person = Person.create(person_params)
+
+		unless birthday_params.empty?
+		  if birthday_params["birth_year"] == "Unknown"
+        self.set_birthdate_by_age(person, birthday_params["age_estimate"], person.session_datetime || Date.today)
+		  else
+        self.set_birthdate(person, birthday_params["birth_year"], birthday_params["birth_month"], birthday_params["birth_day"])
+		  end
+		end
+		person.save
+
+		person.names.create(names_params)
+		person.addresses.create(address_params) unless address_params.empty? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Occupation").person_attribute_type_id,
+		  :value => params["occupation"]) unless params["occupation"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Cell Phone Number").person_attribute_type_id,
+		  :value => params["cell_phone_number"]) unless params["cell_phone_number"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Office Phone Number").person_attribute_type_id,
+		  :value => params["office_phone_number"]) unless params["office_phone_number"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Home Phone Number").person_attribute_type_id,
+		  :value => params["home_phone_number"]) unless params["home_phone_number"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Citizenship").person_attribute_type_id,
+		  :value => params["citizenship"]) unless params["citizenship"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Race").person_attribute_type_id,
+		  :value => params["race"]) unless params["race"].blank? rescue nil
+
+    # TODO handle the birthplace attribute
+
+		if (!patient_params.nil?)
+		  patient = person.create_patient
+
+		  patient_params["identifiers"].each{|identifier_type_name, identifier|
+        next if identifier.blank?
+        identifier_type = PatientIdentifierType.find_by_name(identifier_type_name) || PatientIdentifierType.find_by_name("Unknown id")
+        patient.patient_identifiers.create("identifier" => identifier, "identifier_type" => identifier_type.patient_identifier_type_id)
+		  } if patient_params["identifiers"]
+
+		  # This might actually be a national id, but currently we wouldn't know
+		  #patient.patient_identifiers.create("identifier" => patient_params["identifier"], "identifier_type" => PatientIdentifierType.find_by_name("Unknown id")) unless params["identifier"].blank?
+		end
+
+		return person
+  end
+
+  def self.set_birthdate_by_age(person, age, today = Date.today)
+    person.birthdate = Date.new(today.year - age.to_i, 7, 1)
+    person.birthdate_estimated = 1
+  end
+
+  def self.set_birthdate(person, year = nil, month = nil, day = nil)
+    raise "No year passed for estimated birthdate" if year.nil?
+
+    # Handle months by name or number (split this out to a date method)
+    month_i = (month || 0).to_i
+    month_i = Date::MONTHNAMES.index(month) if month_i == 0 || month_i.blank?
+    month_i = Date::ABBR_MONTHNAMES.index(month) if month_i == 0 || month_i.blank?
+
+    if month_i == 0 || month == "Unknown"
+      person.birthdate = Date.new(year.to_i,7,1)
+      person.birthdate_estimated = 1
+    elsif day.blank? || day == "Unknown" || day == 0
+      person.birthdate = Date.new(year.to_i,month_i,15)
+      person.birthdate_estimated = 1
+    else
+      person.birthdate = Date.new(year.to_i,month_i,day.to_i)
+      person.birthdate_estimated = 0
+    end
+  end
+
   def self.find_remote_by_identifier(identifier)
     known_demographics = {:person => {:patient => { :identifiers => {"National id" => identifier }}}}
     result = Person.find_remote(known_demographics)
@@ -290,39 +415,38 @@ class Person < ActiveRecord::Base
   # use the autossh tunnels setup in environment.rb to query the demographics servers
   # then pull down the demographics
   def self.find_remote(known_demographics)
+     create_from_remote = CoreService.get_global_property_value("create.from.remote")
+	  if create_from_remote
+	  servers = CoreService.get_global_property_value("remote_servers.parent")
+      server_address_and_port = servers.to_s.split(':')
 
-    # known_demographics.merge!({"_method"=>"put"}) #This is probably necessary when querrying a mateme demographics server
-    # Some strange parsing to get the params formatted right for mechanize
-    demographics_params = CGI.unescape(known_demographics.to_param).split('&').map{|elem| elem.split('=')}
+      server_address = server_address_and_port.first
+      server_port = server_address_and_port.second
 
-    # Could probably define this in environment.rb and reuse to improve speed if necessary
-    mechanize_browser = WWW::Mechanize.new
+      login = CoreService.get_global_property_value("remote_bart.username").split(/,/) rescue ""
+      password = CoreService.get_global_property_value("remote_bart.password").split(/,/) rescue ""
+      location = CoreService.get_global_property_value("remote_bart.location").split(/,/) rescue nil
+      machine = CoreService.get_global_property_value("remote_machine.account_name").split(/,/) rescue ''
 
-    demographic_servers = JSON.parse(GlobalProperty.find_by_property("demographic_server_ips_and_local_port").property_value) rescue []
-
-    result = demographic_servers.map{|demographic_server, local_port|
-
-      begin
-        # Note: we don't use the demographic_server because it is port forwarded to localhost
-        output = mechanize_browser.post("http://localhost:#{local_port}/people/remote_demographics", demographics_params).body
-
-      rescue Timeout::Error
-        return 'timeout'
-      rescue
-        return 'creationfailed'
-      end
-
+      uri = "http://#{server_address}:#{server_port}/people/remote_demographics"
       
-      output if output and output.match(/person/)
+      p = JSON.parse(RestClient.post(uri, known_demographics)).first # rescue nil
+      return nil if p.blank?
 
-      # TODO need better logic here to select the best result or merge them
-      # Currently returning the longest result - assuming that it has the most information
-      # Can't return multiple results because there will be redundant data from sites
-    }.sort{|a,b|b.length <=> a.length}.first
+      results = p.second if p.second and p.first.match /person/
 
-    result ? JSON.parse(result) : nil
+      results["occupation"] = results["attributes"]["occupation"]
+      results["cell_phone_number"] = results["attributes"]["cell_phone_number"]
+      results["home_phone_number"] =  results["attributes"]["home_phone_number"]
+      results["office_phone_number"] = results["attributes"]["office_phone_number"]
+      results["attributes"].delete("occupation")
+      results["attributes"].delete("cell_phone_number")
+      results["attributes"].delete("home_phone_number")
+      results["attributes"].delete("office_phone_number")
 
-  end
+      return [self.create_from_form(results)]
+    end
+   end
   
   def formatted_gender
 
@@ -374,19 +498,10 @@ class Person < ActiveRecord::Base
       "current_ta"=>{
         "identifier"=>"#{new_params[:addresses][:county_district]}"}
     }
-
-    demographics_params = CGI.unescape(known_demographics.to_param).split('&').map{|elem| elem.split('=')}
-    
-    mechanize_browser = WWW::Mechanize.new
-
-    demographic_servers = JSON.parse(GlobalProperty.find_by_property("demographic_server_ips_and_local_port").property_value) rescue []
-
-    result = demographic_servers.map{|demographic_server, local_port|
-
-      begin
-
-        output = mechanize_browser.post("http://#{demographic_server}:#{local_port}/patient/create_remote", demographics_params).body
-
+       
+   demographic_server = CoreService.get_global_property_value("remote_servers.parent") 
+	begin
+   output = RestClient.post("http://#{demographic_server}/people/create_remote", known_demographics)
       rescue Timeout::Error 
         return 'timeout'
       rescue
@@ -395,9 +510,7 @@ class Person < ActiveRecord::Base
 
       output if output and output.match(/person/)
 
-    }.sort{|a,b|b.length <=> a.length}.first
-
-    result ? JSON.parse(result) : nil
+   output ? JSON.parse(output) : nil
   end
 
   def phone_numbers
@@ -482,5 +595,4 @@ class Person < ActiveRecord::Base
       return nil
     end
   end
-
 end
