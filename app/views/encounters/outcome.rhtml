@@ -278,7 +278,7 @@ $('next_url').disabled = false;} else {$('next_url').disabled = true; }"
     <% options = {
       :id => "baby_outcome#{baby}",
       :field_type => 'text',
-      :helptext =>"#{baby}<sup>#{prefixes[baby]}</sup> Baby: Discharge Outcome",
+      :helptext =>"#{baby}<sup>#{prefixes[baby]}</sup> Baby: Delivery Outcome",
       :condition => (@location.downcase == "ante-natal ward" ? "false" :
           "($('discharge_outcome').value.toUpperCase() == 'DELIVERED' && parseInt($('number_of_babies').value) > #{baby - 1})")
     }%>
