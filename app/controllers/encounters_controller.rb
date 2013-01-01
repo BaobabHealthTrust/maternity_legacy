@@ -5,7 +5,20 @@ require 'barby/outputter/rmagick_outputter'
 class EncountersController < ApplicationController
 
   def create
-    
+
+    if (params["encounter"]["encounter_type_name"].upcase rescue "") == "UPDATE OUTCOME"
+  
+    baby_date_map = params[:baby_date_map].split("!")
+    baby_date_map.reject! { |b| b.empty? }
+    count = 1   
+    params["observations"].each do |o|
+      if (o["concept_name"].upcase == "BABY OUTCOME" && (baby_date_map[count -1].split(",")[0] rescue -1) == count.to_s)
+		  o[:obs_datetime] = baby_date_map[count - 1].split(",")[1]   
+        count += 1        
+      end
+    end
+    end
+
     params[:encounter][:encounter_datetime] = (params[:encounter][:encounter_datetime].to_date.strftime("%Y-%m-%d ") + 
         Time.now.strftime("%H:%M")) rescue Time.now()
     
