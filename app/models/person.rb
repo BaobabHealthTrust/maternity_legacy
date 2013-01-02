@@ -325,6 +325,8 @@ class Person < ActiveRecord::Base
 
      	person_params["attributes"].delete("occupation") if person_params["attributes"]
      	person_params["attributes"].delete("cell_phone_number") if person_params["attributes"]
+		person_params["attributes"].delete("place_of_birth") if person_params["attributes"]
+		person_params["attributes"].delete("landmark_or_plot_number") if person_params["attributes"]
 
       	person = Person.create(person_params)
 
@@ -335,10 +337,20 @@ class Person < ActiveRecord::Base
         self.set_birthdate(person, birthday_params["birth_year"], birthday_params["birth_month"], birthday_params["birth_day"])
 		  end
 		end
-		person.save
+
+		person.save  
 
 		person.names.create(names_params)
 		person.addresses.create(address_params) unless address_params.empty? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Place Of Birth").person_attribute_type_id,
+		  :value => params["place_of_birth"]) unless params["occupation"].blank? rescue nil
+
+		person.person_attributes.create(
+		  :person_attribute_type_id => PersonAttributeType.find_by_name("Landmark Or Plot Number").person_attribute_type_id,
+		  :value => params["landmark_or_plot_number"]) unless params["landmark_or_plot_number"].blank? rescue nil
+
 
 		person.person_attributes.create(
 		  :person_attribute_type_id => PersonAttributeType.find_by_name("Occupation").person_attribute_type_id,
