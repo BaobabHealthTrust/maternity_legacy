@@ -59,4 +59,8 @@ module ApplicationHelper
     abc ? "abc" : "qwerty"
   end
 
+  def version_tag
+  	MATEME_VERSION
+  end
+
 end
