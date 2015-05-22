@@ -79,10 +79,10 @@ class SessionsController < ApplicationController
       redirect_to 'location' and return
     end
     
-    self.current_location = location.location_id
+    self.current_location = (location.location_id rescue ward.location_id)
 
     session[:location_id] = ward.location_id
-    session[:facility] = location.location_id
+    session[:facility] = (location.location_id rescue ward.location_id)
 
     redirect_to '/'
   end
